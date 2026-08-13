@@ -30,6 +30,15 @@
       position: relative;
       overflow: hidden;
     }
+    #panzoom-target {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      /* Mengizinkan geser 1 jari saat di-zoom, tetapi mematikan zoom gesture browser */
+      touch-action: none;
+    }
     .page-sheet {
       background-color: #ffffff;
       box-shadow: 0 0 20px rgba(0,0,0,0.4);
@@ -79,6 +88,7 @@
 
   <script>
     let pageFlip;
+    let panzoom;
 
     const TOTAL_PAGES = 81;
     const PRELOAD_BUFFER = 4;
@@ -100,8 +110,9 @@
 
     document.addEventListener('DOMContentLoaded', function() {
       const flipbookContainer = document.getElementById('flipbook');
+      const panzoomTarget = document.getElementById('panzoom-target');
 
-      // 1. GENERATE ELEMEN ELEMEN 81 HALAMAN
+      // 1. GENERATE ELEMEN ELEMEN 80 HALAMAN
       for (let i = 1; i <= TOTAL_PAGES; i++) {
         const pageSheet = document.createElement('div');
         pageSheet.className = 'page-sheet';
@@ -145,6 +156,36 @@
         loadAheadImages(currentIdx);
         if (panzoom) panzoom.reset();
       });
+
+      // 3. INISIALISASI PANZOOM (ZOOM DIPICU HANYA DARI TOMBOL)
+      panzoom = Panzoom(panzoomTarget, {
+        maxScale: 2,
+        minScale: 1,
+        contain: 'outside',
+        cursor: 'default',
+        // MENONAKTFKEN PINCH ZOOM PADA LIB PANZOOM
+        disableZoom: false, 
+        canvas: true
+      });
+
+      // PERBAIKAN: MEMATIKAN PINCH 2 JARI TANPA MERUSAK DRAG/PAN 1 JARI
+      panzoomTarget.addEventListener('touchstart', function(e) {
+        if (e.touches && e.touches.length > 1) {
+          e.preventDefault(); // Mencegah pinch zoom browser / panzoom
+        }
+      }, { passive: false });
+
+      panzoomTarget.addEventListener('touchmove', function(e) {
+        if (e.touches && e.touches.length > 1) {
+          e.preventDefault(); // Mencegah pinch zoom saat jari bergerak
+        }
+      }, { passive: false });
+
+      // BINDING TOMBOL ZOOM GUI
+      document.getElementById('btn-zoom-in').addEventListener('click', () => panzoom.zoomIn());
+      document.getElementById('btn-zoom-out').addEventListener('click', () => panzoom.zoomOut());
+      document.getElementById('btn-zoom-reset').addEventListener('click', () => panzoom.reset());
+    });
 
     // PEMBALIK HALAMAN EKSKLUSIF VIA TOMBOL GUI
     function safeFlipPrev() {
