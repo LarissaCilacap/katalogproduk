@@ -24,6 +24,7 @@
       font-family: sans-serif;
       touch-action: none;
     }
+
     .viewport-container {
       width: 100vw;
       height: 100vh;
@@ -33,6 +34,7 @@
       position: relative;
       overflow: hidden;
     }
+
     #panzoom-target {
       display: flex;
       justify-content: center;
@@ -40,16 +42,44 @@
       width: 100%;
       height: 100%;
     }
+
+    /* KERTAS HALAMAN DENGAN INDIKATOR LOADING */
     .page-sheet {
       background-color: #ffffff;
       box-shadow: 0 0 20px rgba(0,0,0,0.4);
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
+
     .page-sheet img {
       width: 100%;
       height: 100%;
       object-fit: contain;
       user-select: none;
       -webkit-user-drag: none;
+      transition: opacity 0.3s ease-in-out;
+      opacity: 0; /* Sembunyikan gambar sampai selesai dimuat */
+    }
+
+    .page-sheet img.loaded {
+      opacity: 1; /* Tampilkan gambar setelah berhasil dimuat */
+    }
+
+    /* ANIMASI SPINNER SAAT GAMBAR SEDANG DIMUAT */
+    .loading-spinner {
+      position: absolute;
+      width: 35px;
+      height: 35px;
+      border: 3px solid rgba(0,0,0,0.1);
+      border-radius: 50%;
+      border-top-color: #009D7B;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -58,7 +88,6 @@
   <!-- AREA KONTANER DENGAN STRUKTUR CENTER PRESISI -->
   <div class="viewport-container">
     <div id="panzoom-target">
-      <!-- CONTAINER BUKU KOSONG (HALAMAN AKAN DI-GENERATE DENGAN JAVASCRIPT) -->
       <div id="flipbook"></div>
     </div>
   </div>
@@ -71,7 +100,7 @@
     <button id="btn-zoom-out" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-search-minus"></i>
     </button>
-    <button id="btn-zoom-reset" class="hover:text-[#009D7B] active:scale-90 transition p-1 text-xs bg-white/10 px-2 py-1 rounded-full">
+    <button id="btn-zoom-reset" class="hover:text-[#009D7B] active:scale-90 transition p-1 text-xs bg-white/10 px-2 py-1 rounded">
       Reset
     </button>
   </div>
@@ -91,59 +120,96 @@
     let pageFlip;
     let panzoom;
 
-    const TOTAL_PAGES = 81; // Ubah jumlah halaman sesuai kebutuhan
+    const TOTAL_PAGES = 80;
+    const PRELOAD_RANGE = 3; // Jumlah halaman ke depan/belakang yang di-preload otomatis
 
     document.addEventListener('DOMContentLoaded', function() {
       const flipbookContainer = document.getElementById('flipbook');
       const panzoomTarget = document.getElementById('panzoom-target');
 
-      // 1. GENERATE ELEMENT PAGE-SHEET SECARA DINAMIS MENGGUNAKAN LOOPING
+      // 1. GENERATE ELEMEN DENGAN LAZY LOADING (data-src)
       for (let i = 1; i <= TOTAL_PAGES; i++) {
         const pageSheet = document.createElement('div');
         pageSheet.className = 'page-sheet';
 
+        // Spinner loading sementara gambar diunduh
+        const spinner = document.createElement('div');
+        spinner.className = 'loading-spinner';
+        pageSheet.appendChild(spinner);
+
         const img = document.createElement('img');
-        // Menyesuaikan format nama file gambar: Produk-1.jpg, Produk-2.jpg, dst.
-        img.src = `produk/Produk-${i}.jpg`;
+        // Gunakan 'data-src' alih-alih 'src' langsung agar browser tidak langsung mengunduh 80 file
+        img.setAttribute('data-src', `produk/Produk-${i}.jpg`);
         img.alt = `Halaman Katalog ${i}`;
-        
-        // Penanganan error jika gambar tidak ditemukan/salah nama
-        img.onerror = function() {
-          console.warn(`Gambar produk/Produk-${i}.jpg gagal dimuat.`);
-        };
 
         pageSheet.appendChild(img);
         flipbookContainer.appendChild(pageSheet);
       }
 
-      // 2. INISIALISASI FLIPBOOK SETELAH ELEMEN GENERATE SELESAI
+      // 2. INISIALISASI FLIPBOOK
       pageFlip = new St.PageFlip(flipbookContainer, {
         width: 540,
         height: 766,
         size: "stretch",
-        minWidth: 270,
-        maxWidth: 810,
-        minHeight: 383,
-        maxHeight: 1149,
+        minWidth: 280,
+        maxWidth: 1000,
+        minHeight: 400,
+        maxHeight: 1500,
         drawShadow: true,
         showCover: true,
         mobileScrollSupport: false,
-        clickToFlip: false,       // Swipe/Klik Manual Tetap Dimatikan
+        clickToFlip: false,
         swipeDistance: 0,
         useTouchEvents: false
       });
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page-sheet'));
 
+      // 3. FUNGSI CERDAS PRELOAD GAMBAR HARAPAN
+      function loadNearbyPages(currentIndex) {
+        const start = Math.max(0, currentIndex - PRELOAD_RANGE);
+        const end = Math.min(TOTAL_PAGES - 1, currentIndex + PRELOAD_RANGE);
+
+        for (let i = start; i <= end; i++) {
+          const pageSheet = document.querySelectorAll('.page-sheet')[i];
+          if (pageSheet) {
+            const img = pageSheet.querySelector('img');
+            const spinner = pageSheet.querySelector('.loading-spinner');
+
+            if (img && img.getAttribute('data-src')) {
+              // Pindahkan path dari data-src ke src resmi
+              img.src = img.getAttribute('data-src');
+              img.removeAttribute('data-src'); // Tandai bahwa gambar sudah diproses
+
+              img.onload = function() {
+                img.classList.add('loaded');
+                if (spinner) spinner.remove(); // Hapus spinner setelah gambar selesai dimuat
+              };
+
+              img.onerror = function() {
+                if (spinner) spinner.remove();
+              };
+            }
+          }
+        }
+      }
+
+      // Muat halaman awal (1-4) saat aplikasi pertama dibuka
+      loadNearbyPages(0);
+
+      // Event Listener saat halaman berpindah
       pageFlip.on('flip', (e) => {
         const total = pageFlip.getPageCount();
         const current = e.data + 1;
         document.getElementById('page-num').innerText = `${current} / ${total}`;
         
+        // Unduh otomatis halaman terdekat dari posisi saat ini
+        loadNearbyPages(e.data);
+
         if (panzoom) panzoom.reset();
       });
 
-      // 3. INISIALISASI PANZOOM
+      // 4. INISIALISASI PANZOOM
       panzoom = Panzoom(panzoomTarget, {
         maxScale: 2,
         minScale: 1,
@@ -168,7 +234,7 @@
       document.getElementById('btn-zoom-reset').addEventListener('click', () => panzoom.reset());
     });
 
-    // Navigasi Halaman Eksklusif via Tombol GUI
+    // Navigasi Halaman
     function safeFlipPrev() {
       if (panzoom) panzoom.reset();
       setTimeout(() => pageFlip.flipPrev(), 50);
