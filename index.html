@@ -147,16 +147,28 @@
 
       // Deteksi perubahan skala zoom untuk mematikan/menghidupkan animasi balik halaman
       panzoomTarget.addEventListener('panzoomchange', (e) => {
-        const scale = e.detail.scale;
+      const scale = e.detail.scale;
+      
+      if (scale > 1.05) {
+        // Mode Zoom Aktif:
+        // 1. Tambah kelas CSS untuk mematikan pointer-events
+        document.body.classList.add('zoom-active');
         
-        if (scale > 1.05) {
-          // Jika posisi di-zoom, kunci interaksi balik halaman
-          document.body.classList.add('zoom-active');
-        } else {
-          // Jika skala normal, aktifkan kembali fitur balik halaman
-          document.body.classList.remove('zoom-active');
+        // 2. Matikan kemampuan drag/swipe langsung pada kertas buku
+        if (pageFlip) {
+          pageFlip.updateFromHtml(document.querySelectorAll('.page-sheet'));
+          // Menonaktifkan kemampuan menarik sudut kertas
+          targetElement.style.pointerEvents = 'none';
         }
-      });
+      } else {
+        // Mode Normal (Skala 1x):
+        // Aktifkan kembali semua fitur sentuh & swipe kertas buku
+        document.body.classList.remove('zoom-active');
+        if (targetElement) {
+          targetElement.style.pointerEvents = 'auto';
+        }
+      }
+    });
 
       // Hubungkan tombol navigasi zoom
       document.getElementById('btn-zoom-in').addEventListener('click', () => panzoom.zoomIn());
@@ -166,14 +178,24 @@
 
     // Fungsi pembalik halaman aman (otomatis reset zoom lebih dulu)
     function safeFlipPrev() {
-      if (panzoom) panzoom.reset();
-      setTimeout(() => pageFlip.flipPrev(), 50);
+    if (panzoom) {
+      panzoom.reset();
+      document.body.classList.remove('zoom-active');
+      const targetElement = document.getElementById('flipbook');
+      if (targetElement) targetElement.style.pointerEvents = 'auto';
     }
+    setTimeout(() => pageFlip.flipPrev(), 100);
+  }
 
-    function safeFlipNext() {
-      if (panzoom) panzoom.reset();
-      setTimeout(() => pageFlip.flipNext(), 50);
+  function safeFlipNext() {
+    if (panzoom) {
+      panzoom.reset();
+      document.body.classList.remove('zoom-active');
+      const targetElement = document.getElementById('flipbook');
+      if (targetElement) targetElement.style.pointerEvents = 'auto';
     }
+    setTimeout(() => pageFlip.flipNext(), 100);
+  }
   </script>
 </body>
 </html>
