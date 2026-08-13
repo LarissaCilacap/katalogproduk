@@ -22,10 +22,8 @@
       overflow: hidden;
       background-color: #0f172a;
       font-family: sans-serif;
-      touch-action: none; /* Mencegah gesture multitouch bawaan browser HP */
+      touch-action: none;
     }
-
-    /* KONTANER UTAMA DIKUNCI PRESISI DI TENGAH LAYAR */
     .viewport-container {
       width: 100vw;
       height: 100vh;
@@ -35,7 +33,6 @@
       position: relative;
       overflow: hidden;
     }
-
     #panzoom-target {
       display: flex;
       justify-content: center;
@@ -43,12 +40,10 @@
       width: 100%;
       height: 100%;
     }
-
     .page-sheet {
       background-color: #ffffff;
       box-shadow: 0 0 20px rgba(0,0,0,0.4);
     }
-
     .page-sheet img {
       width: 100%;
       height: 100%;
@@ -63,26 +58,13 @@
   <!-- AREA KONTANER DENGAN STRUKTUR CENTER PRESISI -->
   <div class="viewport-container">
     <div id="panzoom-target">
-      <div id="flipbook">
-        <div class="page-sheet">
-          <img src="produk/Produk-1.jpg" alt="Sampul Depan Menu">
-        </div>
-        <div class="page-sheet">
-          <img src="produk/Produk-2.jpg" alt="Halaman 1">
-        </div>
-        <div class="page-sheet">
-          <img src="produk/Produk-3.jpg" alt="Halaman 2">
-        </div>
-        <div class="page-sheet">
-          <img src="produk/Produk-4.jpg" alt="Sampul Belakang">
-        </div>
-      </div>
+      <!-- CONTAINER BUKU KOSONG (HALAMAN AKAN DI-GENERATE DENGAN JAVASCRIPT) -->
+      <div id="flipbook"></div>
     </div>
   </div>
 
   <!-- FLOATING NAVBAR TOP (TOMBOL ZOOM CONTROL) -->
   <div class="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-md px-5 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
-    <!-- Tombol Zoom In, Zoom Out, dan Reset -->
     <button id="btn-zoom-in" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-search-plus"></i>
     </button>
@@ -96,11 +78,10 @@
 
   <!-- FLOATING NAVBAR BOTTOM (NAVIGASI HALAMAN) -->
   <div class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-md px-5 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
-    <!-- Navigasi Halaman -->
     <button onclick="safeFlipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
     </button>
-    <span class="text-xs font-semibold tracking-wider select-none px-1" id="page-num">1 / 4</span>
+    <span class="text-xs font-semibold tracking-wider select-none px-1" id="page-num">1 / 80</span>
     <button onclick="safeFlipNext()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-right"></i>
     </button>
@@ -110,25 +91,46 @@
     let pageFlip;
     let panzoom;
 
+    const TOTAL_PAGES = 81; // Ubah jumlah halaman sesuai kebutuhan
+
     document.addEventListener('DOMContentLoaded', function() {
-      const targetElement = document.getElementById('flipbook');
+      const flipbookContainer = document.getElementById('flipbook');
       const panzoomTarget = document.getElementById('panzoom-target');
 
-      // 1. Inisialisasi Pengaturan Flipbook (SWIPE DAN KLIK MANUAL DIMATIKAN TOTAL)
-      pageFlip = new St.PageFlip(targetElement, {
+      // 1. GENERATE ELEMENT PAGE-SHEET SECARA DINAMIS MENGGUNAKAN LOOPING
+      for (let i = 1; i <= TOTAL_PAGES; i++) {
+        const pageSheet = document.createElement('div');
+        pageSheet.className = 'page-sheet';
+
+        const img = document.createElement('img');
+        // Menyesuaikan format nama file gambar: Produk-1.jpg, Produk-2.jpg, dst.
+        img.src = `produk/Produk-${i}.jpg`;
+        img.alt = `Halaman Katalog ${i}`;
+        
+        // Penanganan error jika gambar tidak ditemukan/salah nama
+        img.onerror = function() {
+          console.warn(`Gambar produk/Produk-${i}.jpg gagal dimuat.`);
+        };
+
+        pageSheet.appendChild(img);
+        flipbookContainer.appendChild(pageSheet);
+      }
+
+      // 2. INISIALISASI FLIPBOOK SETELAH ELEMEN GENERATE SELESAI
+      pageFlip = new St.PageFlip(flipbookContainer, {
         width: 540,
         height: 766,
         size: "stretch",
-        minWidth: 280,
-        maxWidth: 1000,
-        minHeight: 400,
-        maxHeight: 1500,
+        minWidth: 270,
+        maxWidth: 810,
+        minHeight: 383,
+        maxHeight: 1149,
         drawShadow: true,
         showCover: true,
         mobileScrollSupport: false,
-        clickToFlip: false,       // Matikan klik/tap langsung pada kertas untuk balik halaman
-        swipeDistance: 0,         // Matikan gestur swipe jari untuk balik halaman
-        useTouchEvents: false     // Matikan pemrosesan touch event internal dari PageFlip
+        clickToFlip: false,       // Swipe/Klik Manual Tetap Dimatikan
+        swipeDistance: 0,
+        useTouchEvents: false
       });
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page-sheet'));
@@ -138,19 +140,18 @@
         const current = e.data + 1;
         document.getElementById('page-num').innerText = `${current} / ${total}`;
         
-        // Reset posisi zoom setiap kali pindah halaman
         if (panzoom) panzoom.reset();
       });
 
-      // 2. Inisialisasi Panzoom (Hanya untuk Drag/Pan & Zoom via Tombol)
+      // 3. INISIALISASI PANZOOM
       panzoom = Panzoom(panzoomTarget, {
-        maxScale: 2,         // Maksimal zoom-in 2x lipat
-        minScale: 1,         // Skala normal
-        contain: 'outside',  // Mencegah gambar bergeser terlalu jauh keluar layar
+        maxScale: 2,
+        minScale: 1,
+        contain: 'outside',
         cursor: 'default'
       });
 
-      // POIN 1: MEMATIKAN PINCH-ZOOM 2 JARI SECARA MUTLAK
+      // Mematikan Pinch-Zoom Dua Jari
       const preventPinchZoom = function(e) {
         if (e.touches && e.touches.length > 1) {
           e.preventDefault();
@@ -161,13 +162,13 @@
       window.addEventListener('touchstart', preventPinchZoom, { passive: false, capture: true });
       window.addEventListener('touchmove', preventPinchZoom, { passive: false, capture: true });
 
-      // Hubungkan tombol navigasi zoom GUI
+      // Event Listener Tombol Zoom Control
       document.getElementById('btn-zoom-in').addEventListener('click', () => panzoom.zoomIn());
       document.getElementById('btn-zoom-out').addEventListener('click', () => panzoom.zoomOut());
       document.getElementById('btn-zoom-reset').addEventListener('click', () => panzoom.reset());
     });
 
-    // POIN 2: PEMBALIK HALAMAN EKSKLUSIF HANYA MELALUI TOMBOL GUI
+    // Navigasi Halaman Eksklusif via Tombol GUI
     function safeFlipPrev() {
       if (panzoom) panzoom.reset();
       setTimeout(() => pageFlip.flipPrev(), 50);
