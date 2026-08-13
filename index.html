@@ -50,8 +50,6 @@
       object-fit: contain;
       user-select: none;
       -webkit-user-drag: none;
-      transition: opacity 0.3s ease-in-out;
-      opacity: 0;
     }
   </style>
 </head>
@@ -83,7 +81,7 @@
     <button onclick="safeFlipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
     </button>
-    <span class="text-xs font-semibold tracking-wider select-none px-1" id="page-num">1 / 80</span>
+    <span class="text-xs font-semibold tracking-wider select-none px-1" id="page-num">1 / 81</span>
     <button onclick="safeFlipNext()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-right"></i>
     </button>
@@ -105,9 +103,14 @@
         pageSheet.className = 'page-sheet';
 
         const img = document.createElement('img');
-        // Gunakan 'data-src' alih-alih 'src' langsung agar browser tidak langsung mengunduh 80 file
-        img.setAttribute('data-src', `produk/Produk-${i}.jpg`);
-        img.alt = `Memuat halaman ${i} ...`;
+        // Menyesuaikan format nama file gambar: Produk-1.jpg, Produk-2.jpg, dst.
+        img.src = `produk/Produk-${i}.jpg`;
+        img.alt = `Halaman Katalog ${i}`;
+        
+        // Penanganan error jika gambar tidak ditemukan/salah nama
+        img.onerror = function() {
+          console.warn(`Gambar produk/Produk-${i}.jpg gagal dimuat.`);
+        };
 
         pageSheet.appendChild(img);
         flipbookContainer.appendChild(pageSheet);
@@ -132,37 +135,10 @@
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page-sheet'));
 
-      function loadNearbyPages(currentIndex) {
-        const start = Math.max(0, currentIndex - PRELOAD_RANGE);
-        const end = Math.min(TOTAL_PAGES - 1, currentIndex + PRELOAD_RANGE);
-
-        for (let i = start; i <= end; i++) {
-          const pageSheet = document.querySelectorAll('.page-sheet')[i];
-          if (pageSheet) {
-            const img = pageSheet.querySelector('img');
-
-            if (img && img.getAttribute('data-src')) {
-              // Pindahkan path dari data-src ke src resmi
-              img.src = img.getAttribute('data-src');
-              img.removeAttribute('data-src'); // Tandai bahwa gambar sudah diproses
-
-              img.onload = function() {
-                img.classList.add('loaded');
-              };
-            }
-          }
-        }
-      }
-
-      // Muat halaman awal (1-4) saat aplikasi pertama dibuka
-      loadNearbyPages(0);
-
       pageFlip.on('flip', (e) => {
         const total = pageFlip.getPageCount();
         const current = e.data + 1;
         document.getElementById('page-num').innerText = `${current} / ${total}`;
-
-        loadNearbyPages(e.data);
         
         if (panzoom) panzoom.reset();
       });
