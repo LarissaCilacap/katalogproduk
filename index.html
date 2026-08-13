@@ -22,9 +22,10 @@
       overflow: hidden;
       background-color: #0f172a;
       font-family: sans-serif;
-      touch-action: none; /* Kunci Gesture Bawaan Browser HP */
+      touch-action: none; /* Mencegah gesture multitouch bawaan browser HP */
     }
 
+    /* KONTANER UTAMA DIKUNCI PRESISI DI TENGAH LAYAR */
     .viewport-container {
       width: 100vw;
       height: 100vh;
@@ -81,6 +82,7 @@
 
   <!-- FLOATING NAVBAR TOP (TOMBOL ZOOM CONTROL) -->
   <div class="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-md px-5 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
+    <!-- Tombol Zoom In, Zoom Out, dan Reset -->
     <button id="btn-zoom-in" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-search-plus"></i>
     </button>
@@ -94,6 +96,7 @@
 
   <!-- FLOATING NAVBAR BOTTOM (NAVIGASI HALAMAN) -->
   <div class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-md px-5 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
+    <!-- Navigasi Halaman -->
     <button onclick="safeFlipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
     </button>
@@ -111,7 +114,7 @@
       const targetElement = document.getElementById('flipbook');
       const panzoomTarget = document.getElementById('panzoom-target');
 
-      // 1. Inisialisasi Pengaturan Flipbook
+      // 1. Inisialisasi Pengaturan Flipbook (SWIPE DAN KLIK MANUAL DIMATIKAN TOTAL)
       pageFlip = new St.PageFlip(targetElement, {
         width: 540,
         height: 766,
@@ -122,7 +125,10 @@
         maxHeight: 1500,
         drawShadow: true,
         showCover: true,
-        mobileScrollSupport: false
+        mobileScrollSupport: false,
+        clickToFlip: false,       // Matikan klik/tap langsung pada kertas untuk balik halaman
+        swipeDistance: 0,         // Matikan gestur swipe jari untuk balik halaman
+        useTouchEvents: false     // Matikan pemrosesan touch event internal dari PageFlip
       });
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page-sheet'));
@@ -132,52 +138,36 @@
         const current = e.data + 1;
         document.getElementById('page-num').innerText = `${current} / ${total}`;
         
+        // Reset posisi zoom setiap kali pindah halaman
         if (panzoom) panzoom.reset();
       });
 
-      // 2. Inisialisasi Panzoom (Sistem Drag/Pan Gambar)
+      // 2. Inisialisasi Panzoom (Hanya untuk Drag/Pan & Zoom via Tombol)
       panzoom = Panzoom(panzoomTarget, {
-        maxScale: 2,
-        minScale: 1,
-        contain: 'outside',
+        maxScale: 2,         // Maksimal zoom-in 2x lipat
+        minScale: 1,         // Skala normal
+        contain: 'outside',  // Mencegah gambar bergeser terlalu jauh keluar layar
         cursor: 'default'
       });
 
-      // SOLUSI MASALAH 1: BLOKIR PINCH-ZOOM 2 JARI DI TINGKAT WINDOW/DOCUMENT
-      const blockPinchZoom = function(e) {
+      // POIN 1: MEMATIKAN PINCH-ZOOM 2 JARI SECARA MUTLAK
+      const preventPinchZoom = function(e) {
         if (e.touches && e.touches.length > 1) {
           e.preventDefault();
           e.stopPropagation();
         }
       };
-      
-      window.addEventListener('touchstart', blockPinchZoom, { passive: false, capture: true });
-      window.addEventListener('touchmove', blockPinchZoom, { passive: false, capture: true });
 
-      // SOLUSI MASALAH 2: MATIKAN EVENT SWIPE BUKU MENGGUNAKAN API INTERNAL PAGEFLIP
-      panzoomTarget.addEventListener('panzoomchange', (e) => {
-        const scale = e.detail.scale;
-        
-        if (scale > 1.05) {
-          // SAAT MODE ZOOM: Matikan fitur pembalik halaman via sentuhan jari sepenuhnya
-          if (pageFlip.getSettings().usePortrait) {
-            pageFlip.update({ swipeDistance: 0, clickToFlip: false });
-          } else {
-            pageFlip.update({ swipeDistance: 0, clickToFlip: false });
-          }
-        } else {
-          // SAAT NORMAL: Aktifkan kembali fungsi swipe pembalik halaman
-          pageFlip.update({ swipeDistance: 30, clickToFlip: true });
-        }
-      });
+      window.addEventListener('touchstart', preventPinchZoom, { passive: false, capture: true });
+      window.addEventListener('touchmove', preventPinchZoom, { passive: false, capture: true });
 
-      // Hubungkan ke tombol navigasi Zoom GUI
+      // Hubungkan tombol navigasi zoom GUI
       document.getElementById('btn-zoom-in').addEventListener('click', () => panzoom.zoomIn());
       document.getElementById('btn-zoom-out').addEventListener('click', () => panzoom.zoomOut());
       document.getElementById('btn-zoom-reset').addEventListener('click', () => panzoom.reset());
     });
 
-    // Fungsi pembalik halaman aman via tombol bawah GUI
+    // POIN 2: PEMBALIK HALAMAN EKSKLUSIF HANYA MELALUI TOMBOL GUI
     function safeFlipPrev() {
       if (panzoom) panzoom.reset();
       setTimeout(() => pageFlip.flipPrev(), 50);
