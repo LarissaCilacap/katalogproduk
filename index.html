@@ -50,6 +50,8 @@
       object-fit: contain;
       user-select: none;
       -webkit-user-drag: none;
+      /* Efek transisi halus saat gambar selesai terunduh */
+      transition: opacity 0.3s ease-in-out;
     }
   </style>
 </head>
@@ -58,7 +60,6 @@
   <!-- AREA KONTANER DENGAN STRUKTUR CENTER PRESISI -->
   <div class="viewport-container">
     <div id="panzoom-target">
-      <!-- CONTAINER BUKU KOSONG (HALAMAN AKAN DI-GENERATE DENGAN JAVASCRIPT) -->
       <div id="flipbook"></div>
     </div>
   </div>
@@ -91,32 +92,53 @@
     let pageFlip;
     let panzoom;
 
-    const TOTAL_PAGES = 81; // Ubah jumlah halaman sesuai kebutuhan
+    const TOTAL_PAGES = 81;
+    const PRELOAD_BUFFER = 4; // Mengunduh 4 halaman ke depan dari posisi aktif
+    
+    // Pixel transparan ringan untuk placeholder awal
+    const BLANK_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 766'%3E%3C/svg%3E";
+
+    // FUNGSI LAZY LOADING: HANYA UNDUH GAMBAR SESUAI URUTAN
+    function loadAheadImages(currentPageIndex) {
+      // Index dimulai dari 0 (halaman 1 = index 0)
+      const startIdx = currentPageIndex;
+      const endIdx = Math.min(currentPageIndex + PRELOAD_BUFFER, TOTAL_PAGES - 1);
+
+      for (let i = startIdx; i <= endIdx; i++) {
+        const img = document.getElementById(`img-page-${i + 1}`);
+        if (img && img.getAttribute('data-src')) {
+          const realSrc = img.getAttribute('data-src');
+          img.src = realSrc; 
+          img.removeAttribute('data-src'); // Tandai bahwa gambar sudah diunduh
+        }
+      }
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
       const flipbookContainer = document.getElementById('flipbook');
       const panzoomTarget = document.getElementById('panzoom-target');
 
-      // 1. GENERATE ELEMENT PAGE-SHEET SECARA DINAMIS MENGGUNAKAN LOOPING
+      // 1. GENERATE ELEMEN DENGAN LAZY LOADING ATTRIBUTE
       for (let i = 1; i <= TOTAL_PAGES; i++) {
         const pageSheet = document.createElement('div');
         pageSheet.className = 'page-sheet';
 
         const img = document.createElement('img');
-        // Menyesuaikan format nama file gambar: Produk-1.jpg, Produk-2.jpg, dst.
-        img.src = `produk/Produk-${i}.jpg`;
-        img.alt = `Halaman Katalog ${i}`;
+        img.id = `img-page-${i}`;
         
-        // Penanganan error jika gambar tidak ditemukan/salah nama
-        img.onerror = function() {
-          console.warn(`Gambar produk/Produk-${i}.jpg gagal dimuat.`);
-        };
+        // Simpan URL asli di 'data-src', gunakan placeholder ringan untuk 'src' awal
+        img.setAttribute('data-src', `produk/Produk-${i}.jpg`);
+        img.src = BLANK_PLACEHOLDER;
+        img.alt = `Halaman Katalog ${i}`;
 
         pageSheet.appendChild(img);
         flipbookContainer.appendChild(pageSheet);
       }
 
-      // 2. INISIALISASI FLIPBOOK SETELAH ELEMEN GENERATE SELESAI
+      // Unduh gambar awal (halaman 1 sampai 4) sebelum library diinisialisasi
+      loadAheadImages(0);
+
+      // 2. INISIALISASI FLIPBOOK
       pageFlip = new St.PageFlip(flipbookContainer, {
         width: 540,
         height: 766,
@@ -128,18 +150,23 @@
         drawShadow: true,
         showCover: true,
         mobileScrollSupport: false,
-        clickToFlip: false,       // Swipe/Klik Manual Tetap Dimatikan
+        clickToFlip: false,
         swipeDistance: 0,
         useTouchEvents: false
       });
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page-sheet'));
 
+      // DETEKSI PERPINDAHAN HALAMAN UNTUK MEMICU PRELOAD GAMBAR SELANJUTNYA
       pageFlip.on('flip', (e) => {
         const total = pageFlip.getPageCount();
-        const current = e.data + 1;
-        document.getElementById('page-num').innerText = `${current} / ${total}`;
+        const currentIdx = e.data; // Index halaman saat ini (0..79)
         
+        document.getElementById('page-num').innerText = `${currentIdx + 1} / ${total}`;
+        
+        // Unduh 4 gambar berikutnya di latar belakang
+        loadAheadImages(currentIdx);
+
         if (panzoom) panzoom.reset();
       });
 
@@ -162,13 +189,13 @@
       window.addEventListener('touchstart', preventPinchZoom, { passive: false, capture: true });
       window.addEventListener('touchmove', preventPinchZoom, { passive: false, capture: true });
 
-      // Event Listener Tombol Zoom Control
+      // Event Listener Tombol Zoom
       document.getElementById('btn-zoom-in').addEventListener('click', () => panzoom.zoomIn());
       document.getElementById('btn-zoom-out').addEventListener('click', () => panzoom.zoomOut());
       document.getElementById('btn-zoom-reset').addEventListener('click', () => panzoom.reset());
     });
 
-    // Navigasi Halaman Eksklusif via Tombol GUI
+    // Navigasi Halaman via Tombol GUI
     function safeFlipPrev() {
       if (panzoom) panzoom.reset();
       setTimeout(() => pageFlip.flipPrev(), 50);
