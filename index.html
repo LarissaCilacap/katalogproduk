@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Katalog Produk Online</title>
+  <title>Katalog Produk</title>
   
   <!-- Tailwind CSS & FontAwesome -->
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Library JS Page-Flip Gratis & Bebas Iklan -->
+  <!-- Library JS Page-Flip -->
   <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.js"></script>
+
+  <!-- Library JS Panzoom -->
+  <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
 
   <style>
     body, html {
@@ -19,93 +22,173 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #0f172a; /* Latar belakang gelap elegan */
+      background-color: #0f172a;
       font-family: sans-serif;
     }
-    .flipbook-container {
-      width: 100%;
-      height: 100%;
+
+    /* KONTANER UTAMA DIKUNCI PRESISI DI TENGAH LAYAR */
+    .viewport-container {
+      width: 100vw;
+      height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
+      position: relative;
+      overflow: hidden;
     }
+
+    #panzoom-target {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+    }
+
     .page-sheet {
       background-color: #ffffff;
       box-shadow: 0 0 20px rgba(0,0,0,0.4);
     }
+
     .page-sheet img {
       width: 100%;
       height: 100%;
       object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    /* KELAS KHUSUS SAAT DIZOOM: MATIKAN EVENT KLIK/SWIPE KERTAS BUKU */
+    .zoom-active .stpageflip--container {
+      pointer-events: none !important;
     }
   </style>
 </head>
 <body class="relative flex flex-col justify-between">
 
-  <!-- AREA KONTANER FLIPBOOK -->
-  <div class="flipbook-container" id="book-wrapper">
-    <div id="flipbook">
-      
-      <!-- HALAMAN DIPANGGIL DARI FOLDER "produk" -->
-      <div class="page-sheet">
-        <img src="produk/Produk-1.jpg" alt="Sampul Depan Menu">
-      </div>
-      <div class="page-sheet">
-        <img src="produk/Produk-2.jpg" alt="Halaman 1">
-      </div>
-      <div class="page-sheet">
-        <img src="produk/Produk-3.jpg" alt="Halaman 2">
-      </div>
-      <div class="page-sheet">
-        <img src="produk/Produk-4.jpg" alt="Sampul Belakang">
-      </div>
+  <!-- AREA KONTANER DENGAN STRUKTUR CENTER PRESISI -->
+  <div class="viewport-container">
+    <div id="panzoom-target">
+      <div id="flipbook">
+        
+        <div class="page-sheet">
+          <img src="produk/Produk-1.jpg" alt="Sampul Depan Menu">
+        </div>
+        <div class="page-sheet">
+          <img src="produk/Produk-2.jpg" alt="Halaman 1">
+        </div>
+        <div class="page-sheet">
+          <img src="produk/Produk-3.jpg" alt="Halaman 2">
+        </div>
+        <div class="page-sheet">
+          <img src="produk/Produk-4.jpg" alt="Sampul Belakang">
+        </div>
 
+      </div>
     </div>
   </div>
 
-  <!-- FLOATING NAVBAR NAVIGASI -->
-  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-md px-6 py-2.5 rounded-full flex items-center gap-6 text-white text-xl z-50 shadow-2xl border border-white/10">
-    <button onclick="pageFlip.flipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
+  <!-- FLOATING NAVBAR NAVIGASI & TOMBOL ZOOM -->
+  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-md px-5 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
+    
+    <!-- Navigasi Halaman -->
+    <button onclick="safeFlipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
     </button>
     
-    <span class="text-sm font-semibold tracking-wider select-none" id="page-num">1 / 4</span>
+    <span class="text-xs font-semibold tracking-wider select-none px-1" id="page-num">1 / 4</span>
 
-    <button onclick="pageFlip.flipNext()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
+    <button onclick="safeFlipNext()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-right"></i>
+    </button>
+
+    <!-- Pembatas -->
+    <div class="h-5 w-[1px] bg-white/20 my-auto"></div>
+
+    <!-- Tombol Zoom In, Zoom Out, dan Reset -->
+    <button id="btn-zoom-in" class="hover:text-[#009D7B] active:scale-90 transition p-1">
+      <i class="fas fa-search-plus"></i>
+    </button>
+
+    <button id="btn-zoom-out" class="hover:text-[#009D7B] active:scale-90 transition p-1">
+      <i class="fas fa-search-minus"></i>
+    </button>
+
+    <button id="btn-zoom-reset" class="hover:text-[#009D7B] active:scale-90 transition p-1 text-xs bg-white/10 px-2 py-1 rounded">
+      Reset
     </button>
   </div>
 
   <script>
     let pageFlip;
+    let panzoom;
 
     document.addEventListener('DOMContentLoaded', function() {
       const targetElement = document.getElementById('flipbook');
+      const panzoomTarget = document.getElementById('panzoom-target');
 
-      // Inisialisasi Pengaturan Buku
+      // 1. Inisialisasi Pengaturan Flipbook
       pageFlip = new St.PageFlip(targetElement, {
-        width: 540,          // Lebar proporsional dasar (px)
-        height: 766,         // Tinggi proporsional dasar (px)
-        size: "stretch",     // Otomatis menyesuaikan ukuran layar HP (responsive)
+        width: 540,
+        height: 766,
+        size: "stretch",
         minWidth: 280,
         maxWidth: 1000,
         minHeight: 400,
-        maxHeight: 1400,
-        drawShadow: true,    // Efek bayangan lipatan 3D
-        showCover: true,     // Tampilkan sampul depan secara tunggal
+        maxHeight: 1500,
+        drawShadow: true,
+        showCover: true,
         mobileScrollSupport: false
       });
 
-      // Render elemen gambar menjadi halaman buku
       pageFlip.loadFromHTML(document.querySelectorAll('.page-sheet'));
 
-      // Pembaruan angka halaman aktif saat dibalik
       pageFlip.on('flip', (e) => {
         const total = pageFlip.getPageCount();
         const current = e.data + 1;
         document.getElementById('page-num').innerText = `${current} / ${total}`;
+        
+        // Reset posisi zoom saat balik halaman
+        if (panzoom) panzoom.reset();
       });
+
+      // 2. Inisialisasi Panzoom (Maksimal Zoom Dibatasi 2x Lipat)
+      panzoom = Panzoom(panzoomTarget, {
+        maxScale: 2,         // Maksimal zoom-in 2x lipat
+        minScale: 1,         // Skala normal
+        contain: 'outside',  // Mencegah konten keluar terlalu jauh
+        cursor: 'default'
+      });
+
+      // Deteksi perubahan skala zoom untuk mematikan/menghidupkan animasi balik halaman
+      panzoomTarget.addEventListener('panzoomchange', (e) => {
+        const scale = e.detail.scale;
+        
+        if (scale > 1.05) {
+          // Jika posisi di-zoom, kunci interaksi balik halaman
+          document.body.classList.add('zoom-active');
+        } else {
+          // Jika skala normal, aktifkan kembali fitur balik halaman
+          document.body.classList.remove('zoom-active');
+        }
+      });
+
+      // Hubungkan tombol navigasi zoom
+      document.getElementById('btn-zoom-in').addEventListener('click', () => panzoom.zoomIn());
+      document.getElementById('btn-zoom-out').addEventListener('click', () => panzoom.zoomOut());
+      document.getElementById('btn-zoom-reset').addEventListener('click', () => panzoom.reset());
     });
+
+    // Fungsi pembalik halaman aman (otomatis reset zoom lebih dulu)
+    function safeFlipPrev() {
+      if (panzoom) panzoom.reset();
+      setTimeout(() => pageFlip.flipPrev(), 50);
+    }
+
+    function safeFlipNext() {
+      if (panzoom) panzoom.reset();
+      setTimeout(() => pageFlip.flipNext(), 50);
+    }
   </script>
 </body>
 </html>
