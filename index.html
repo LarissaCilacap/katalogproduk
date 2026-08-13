@@ -39,6 +39,7 @@
       align-items: center;
       width: 100%;
       height: 100%;
+      touch-action: none;
     }
     .page-sheet {
       background-color: #ffffff;
@@ -50,7 +51,6 @@
       object-fit: contain;
       user-select: none;
       -webkit-user-drag: none;
-      /* Efek transisi halus saat gambar selesai terunduh */
       transition: opacity 0.3s ease-in-out;
     }
   </style>
@@ -94,13 +94,10 @@
 
     const TOTAL_PAGES = 81;
     const PRELOAD_BUFFER = 4; // Mengunduh 4 halaman ke depan dari posisi aktif
-    
-    // Pixel transparan ringan untuk placeholder awal
     const BLANK_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 766'%3E%3C/svg%3E";
 
     // FUNGSI LAZY LOADING: HANYA UNDUH GAMBAR SESUAI URUTAN
     function loadAheadImages(currentPageIndex) {
-      // Index dimulai dari 0 (halaman 1 = index 0)
       const startIdx = currentPageIndex;
       const endIdx = Math.min(currentPageIndex + PRELOAD_BUFFER, TOTAL_PAGES - 1);
 
@@ -125,8 +122,6 @@
 
         const img = document.createElement('img');
         img.id = `img-page-${i}`;
-        
-        // Simpan URL asli di 'data-src', gunakan placeholder ringan untuk 'src' awal
         img.setAttribute('data-src', `produk/Produk-${i}.jpg`);
         img.src = BLANK_PLACEHOLDER;
         img.alt = `Halaman Katalog ${i}`;
@@ -152,7 +147,8 @@
         mobileScrollSupport: false,
         clickToFlip: false,
         swipeDistance: 0,
-        useTouchEvents: false
+        useTouchEvents: false,
+        swipeDistance: 99999
       });
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page-sheet'));
@@ -161,12 +157,10 @@
       pageFlip.on('flip', (e) => {
         const total = pageFlip.getPageCount();
         const currentIdx = e.data; // Index halaman saat ini (0..79)
-        
         document.getElementById('page-num').innerText = `${currentIdx + 1} / ${total}`;
         
         // Unduh 4 gambar berikutnya di latar belakang
         loadAheadImages(currentIdx);
-
         if (panzoom) panzoom.reset();
       });
 
@@ -175,19 +169,23 @@
         maxScale: 2,
         minScale: 1,
         contain: 'outside',
-        cursor: 'default'
+        cursor: 'default',
+        disableZoom: false, 
+        canvas: true
       });
 
       // Mematikan Pinch-Zoom Dua Jari
-      const preventPinchZoom = function(e) {
+      panzoomTarget.addEventListener('touchstart', function(e) {
         if (e.touches && e.touches.length > 1) {
-          e.preventDefault();
-          e.stopPropagation();
+          e.preventDefault(); // Mencegah pinch zoom browser / panzoom
         }
-      };
+      }, { passive: false });
 
-      window.addEventListener('touchstart', preventPinchZoom, { passive: false, capture: true });
-      window.addEventListener('touchmove', preventPinchZoom, { passive: false, capture: true });
+      panzoomTarget.addEventListener('touchmove', function(e) {
+        if (e.touches && e.touches.length > 1) {
+          e.preventDefault(); // Mencegah pinch zoom saat jari bergerak
+        }
+      }, { passive: false });
 
       // Event Listener Tombol Zoom
       document.getElementById('btn-zoom-in').addEventListener('click', () => panzoom.zoomIn());
