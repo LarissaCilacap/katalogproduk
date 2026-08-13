@@ -20,7 +20,10 @@
       overflow: hidden;
       background-color: #0f172a;
       font-family: sans-serif;
+      touch-action: manipulation;
     }
+
+    /* KONTANER UTAMA DENGAN POSISI CENTER PRESISI */
     .viewport-container {
       width: 100vw;
       height: 100vh;
@@ -30,19 +33,20 @@
       position: relative;
       overflow: hidden;
     }
-    #panzoom-target {
+
+    #flipbook-wrapper {
       display: flex;
       justify-content: center;
       align-items: center;
       width: 100%;
       height: 100%;
-      /* Mengizinkan geser 1 jari saat di-zoom, tetapi mematikan zoom gesture browser */
-      touch-action: none;
     }
+
     .page-sheet {
       background-color: #ffffff;
       box-shadow: 0 0 20px rgba(0,0,0,0.4);
     }
+
     .page-sheet img {
       width: 100%;
       height: 100%;
@@ -53,48 +57,34 @@
     }
   </style>
 </head>
-<body class="relative flex flex-col justify-between">
+<body class="relative flex flex-col justify-between select-none">
 
-  <!-- AREA KONTANER UTAMA -->
+  <!-- AREA UTAMA DISPLAY KATALOG -->
   <div class="viewport-container">
-    <div id="panzoom-target">
+    <div id="flipbook-wrapper">
       <div id="flipbook"></div>
     </div>
   </div>
 
-  <!-- FLOATING NAVBAR TOP (ZOOM CONTROL) -->
-  <div class="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-md px-5 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
-    <button id="btn-zoom-in" class="hover:text-[#009D7B] active:scale-90 transition p-1">
-      <i class="fas fa-search-plus"></i>
-    </button>
-    <button id="btn-zoom-out" class="hover:text-[#009D7B] active:scale-90 transition p-1">
-      <i class="fas fa-search-minus"></i>
-    </button>
-    <button id="btn-zoom-reset" class="hover:text-[#009D7B] active:scale-90 transition p-1 text-xs bg-white/10 px-2 py-1 rounded-full">
-      Reset
-    </button>
-  </div>
-
-  <!-- FLOATING NAVBAR BOTTOM (NAVIGASI HALAMAN) -->
-  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-md px-5 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
-    <button onclick="safeFlipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
+  <!-- FLOATING NAVBAR BOTTOM (NAVIGASI EKSKLUSIF BUKU) -->
+  <div class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-full flex items-center gap-5 text-white text-lg z-50 shadow-2xl border border-white/10">
+    <button onclick="flipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
     </button>
-    <span class="text-xs font-semibold tracking-wider select-none px-1" id="page-num">1 / 81</span>
-    <button onclick="safeFlipNext()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
+    <span class="text-xs font-semibold tracking-wider select-none px-2" id="page-num">1 / 80</span>
+    <button onclick="flipNext()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-right"></i>
     </button>
   </div>
 
   <script>
     let pageFlip;
-    let panzoom;
 
-    const TOTAL_PAGES = 81;
-    const PRELOAD_BUFFER = 4;
+    const TOTAL_PAGES = 80;
+    const PRELOAD_BUFFER = 4; // Mengunduh 4 halaman ke depan secara bertahap
     const BLANK_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 766'%3E%3C/svg%3E";
 
-    // FUNGSI LAZY LOADING GAMBAR
+    // FUNGSI OPTIMASI LAZY LOADING GAMBAR
     function loadAheadImages(currentPageIndex) {
       const startIdx = currentPageIndex;
       const endIdx = Math.min(currentPageIndex + PRELOAD_BUFFER, TOTAL_PAGES - 1);
@@ -103,16 +93,15 @@
         const img = document.getElementById(`img-page-${i + 1}`);
         if (img && img.getAttribute('data-src')) {
           img.src = img.getAttribute('data-src');
-          img.removeAttribute('data-src');
+          img.removeAttribute('data-src'); // Tandai bahwa gambar telah dimuat
         }
       }
     }
 
     document.addEventListener('DOMContentLoaded', function() {
       const flipbookContainer = document.getElementById('flipbook');
-      const panzoomTarget = document.getElementById('panzoom-target');
 
-      // 1. GENERATE ELEMEN ELEMEN 80 HALAMAN
+      // 1. GENERATE DINAMIS ELEMEN 80 HALAMAN
       for (let i = 1; i <= TOTAL_PAGES; i++) {
         const pageSheet = document.createElement('div');
         pageSheet.className = 'page-sheet';
@@ -127,10 +116,10 @@
         flipbookContainer.appendChild(pageSheet);
       }
 
-      // Preload 4 halaman pertama
+      // Preload 4 halaman pertama saat aplikasi dibuka
       loadAheadImages(0);
 
-      // 2. INISIALISASI FLIPBOOK (SWIPE DIBLOKIR TOTAL LEWAT METODE EVENT)
+      // 2. INISIALISASI ST.PAGEFLIP (MATIKAN SWIPE & KLIK HALAMAN MANUAL)
       pageFlip = new St.PageFlip(flipbookContainer, {
         width: 540,
         height: 766,
@@ -142,60 +131,30 @@
         drawShadow: true,
         showCover: true,
         mobileScrollSupport: false,
-        clickToFlip: false,
-        swipeDistance: 99999 // Mengeset jarak swipe sangat tinggi agar swipe jari tidak memicu balik halaman
+        clickToFlip: false,     // Matikan interaksi klik kertas
+        swipeDistance: 99999    // Kunci penuh gestur swipe jari pada layar
       });
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page-sheet'));
 
+      // EVENT LISTENER EVENT BALIK HALAMAN
       pageFlip.on('flip', (e) => {
         const total = pageFlip.getPageCount();
         const currentIdx = e.data;
         document.getElementById('page-num').innerText = `${currentIdx + 1} / ${total}`;
         
+        // Panggil pengunduhan halaman selanjutnya
         loadAheadImages(currentIdx);
-        if (panzoom) panzoom.reset();
       });
-
-      // 3. INISIALISASI PANZOOM (ZOOM DIPICU HANYA DARI TOMBOL)
-      panzoom = Panzoom(panzoomTarget, {
-        maxScale: 2,
-        minScale: 1,
-        contain: 'outside',
-        cursor: 'default',
-        // MENONAKTFKEN PINCH ZOOM PADA LIB PANZOOM
-        disableZoom: false, 
-        canvas: true
-      });
-
-      // PERBAIKAN: MEMATIKAN PINCH 2 JARI TANPA MERUSAK DRAG/PAN 1 JARI
-      panzoomTarget.addEventListener('touchstart', function(e) {
-        if (e.touches && e.touches.length > 1) {
-          e.preventDefault(); // Mencegah pinch zoom browser / panzoom
-        }
-      }, { passive: false });
-
-      panzoomTarget.addEventListener('touchmove', function(e) {
-        if (e.touches && e.touches.length > 1) {
-          e.preventDefault(); // Mencegah pinch zoom saat jari bergerak
-        }
-      }, { passive: false });
-
-      // BINDING TOMBOL ZOOM GUI
-      document.getElementById('btn-zoom-in').addEventListener('click', () => panzoom.zoomIn());
-      document.getElementById('btn-zoom-out').addEventListener('click', () => panzoom.zoomOut());
-      document.getElementById('btn-zoom-reset').addEventListener('click', () => panzoom.reset());
     });
 
-    // PEMBALIK HALAMAN EKSKLUSIF VIA TOMBOL GUI
-    function safeFlipPrev() {
-      if (panzoom) panzoom.reset();
-      setTimeout(() => pageFlip.flipPrev(), 50);
+    // FUNGSI NAVIGASI PEMBALIK HALAMAN VIA TOMBOL GUI
+    function flipPrev() {
+      if (pageFlip) pageFlip.flipPrev();
     }
 
-    function safeFlipNext() {
-      if (panzoom) panzoom.reset();
-      setTimeout(() => pageFlip.flipNext(), 50);
+    function flipNext() {
+      if (pageFlip) pageFlip.flipNext();
     }
   </script>
 </body>
