@@ -22,6 +22,7 @@
       overflow: hidden;
       background-color: #0f172a;
       font-family: sans-serif;
+      touch-action: none; /* Mencegah gesture default browser */
     }
     /* KONTANER UTAMA DIKUNCI PRESISI DI TENGAH LAYAR */
     .viewport-container {
@@ -51,7 +52,7 @@
       user-select: none;
       -webkit-user-drag: none;
     }
-    /* KELAS KHUSUS SAAT DIZOOM: MATIKAN EVENT KLIK/SWIPE KERTAS BUKU */
+    /* KELAS KHUSUS SAAT MODE ZOOM ACTIVE: MATIKAN SWIPE/CLICK BUKU */
     .zoom-active .stpageflip--container {
       pointer-events: none !important;
     }
@@ -79,9 +80,8 @@
     </div>
   </div>
 
-  <!-- FLOATING NAVBAR NAVIGASI & TOMBOL ZOOM -->
+  <!-- FLOATING NAVBAR TOP (TOMBOL ZOOM CONTROL) -->
   <div class="fixed top-5 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-md px-5 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
-    <!-- Tombol Zoom In, Zoom Out, dan Reset -->
     <button id="btn-zoom-in" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-search-plus"></i>
     </button>
@@ -93,8 +93,8 @@
     </button>
   </div>
 
+  <!-- FLOATING NAVBAR BOTTOM (NAVIGASI HALAMAN) -->
   <div class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900/85 backdrop-blur-md px-5 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
-    <!-- Navigasi Halaman -->
     <button onclick="safeFlipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
     </button>
@@ -137,65 +137,51 @@
         if (panzoom) panzoom.reset();
       });
 
-      // 2. Inisialisasi Panzoom (Maksimal Zoom Dibatasi 2x Lipat)
+      // 2. Inisialisasi Panzoom (Zoom hanya lewat tombol, Pinch-Zoom dimatikan)
       panzoom = Panzoom(panzoomTarget, {
         maxScale: 2,         // Maksimal zoom-in 2x lipat
         minScale: 1,         // Skala normal
-        contain: 'outside',  // Mencegah konten keluar terlalu jauh
-        cursor: 'default'
+        contain: 'outside',  // Mencegah gambar bergeser terlalu jauh keluar layar
+        cursor: 'default',
+        excludeClass: 'stpageflip--container'
       });
 
-      // Deteksi perubahan skala zoom untuk mematikan/menghidupkan animasi balik halaman
-      panzoomTarget.addEventListener('panzoomchange', (e) => {
-      const scale = e.detail.scale;
-      
-      if (scale > 1.05) {
-        // Mode Zoom Aktif:
-        // 1. Tambah kelas CSS untuk mematikan pointer-events
-        document.body.classList.add('zoom-active');
-        
-        // 2. Matikan kemampuan drag/swipe langsung pada kertas buku
-        if (pageFlip) {
-          pageFlip.updateFromHtml(document.querySelectorAll('.page-sheet'));
-          // Menonaktifkan kemampuan menarik sudut kertas
-          targetElement.style.pointerEvents = 'none';
+      // MEMATIKAN PINCH-ZOOM DUA JARI DENGAN MENCEGAH EVENT TOUCHMULTI
+      panzoomTarget.addEventListener('touchstart', function(e) {
+        if (e.touches.length > 1) {
+          e.stopPropagation(); // Blokir gesture dua jari untuk zoom
         }
-      } else {
-        // Mode Normal (Skala 1x):
-        // Aktifkan kembali semua fitur sentuh & swipe kertas buku
-        document.body.classList.remove('zoom-active');
-        if (targetElement) {
-          targetElement.style.pointerEvents = 'auto';
-        }
-      }
-    });
+      }, { capture: true });
 
-      // Hubungkan tombol navigasi zoom
+      // Deteksi Perubahan Skala Zoom
+      panzoomTarget.addEventListener('panzoomchange', (e) => {
+        const scale = e.detail.scale;
+        
+        if (scale > 1.05) {
+          // MODE ZOOM IN: Kunci gesture swipe/flip jari pada kertas buku
+          document.body.classList.add('zoom-active');
+        } else {
+          // MODE NORMAL: Aktifkan kembali gesture swipe/flip jari
+          document.body.classList.remove('zoom-active');
+        }
+      });
+
+      // Hubungkan ke tombol navigasi Zoom
       document.getElementById('btn-zoom-in').addEventListener('click', () => panzoom.zoomIn());
       document.getElementById('btn-zoom-out').addEventListener('click', () => panzoom.zoomOut());
       document.getElementById('btn-zoom-reset').addEventListener('click', () => panzoom.reset());
     });
 
-    // Fungsi pembalik halaman aman (otomatis reset zoom lebih dulu)
+    // Fungsi pembalik halaman aman melalui tombol navigasi GUI
     function safeFlipPrev() {
-    if (panzoom) {
-      panzoom.reset();
-      document.body.classList.remove('zoom-active');
-      const targetElement = document.getElementById('flipbook');
-      if (targetElement) targetElement.style.pointerEvents = 'auto';
+      if (panzoom) panzoom.reset();
+      setTimeout(() => pageFlip.flipPrev(), 50);
     }
-    setTimeout(() => pageFlip.flipPrev(), 100);
-  }
 
-  function safeFlipNext() {
-    if (panzoom) {
-      panzoom.reset();
-      document.body.classList.remove('zoom-active');
-      const targetElement = document.getElementById('flipbook');
-      if (targetElement) targetElement.style.pointerEvents = 'auto';
+    function safeFlipNext() {
+      if (panzoom) panzoom.reset();
+      setTimeout(() => pageFlip.flipNext(), 50);
     }
-    setTimeout(() => pageFlip.flipNext(), 100);
-  }
   </script>
 </body>
 </html>
