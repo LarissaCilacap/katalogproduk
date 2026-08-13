@@ -22,7 +22,6 @@
       font-family: sans-serif;
       touch-action: manipulation;
     }
-
     /* KONTANER UTAMA DENGAN POSISI CENTER PRESISI */
     .viewport-container {
       width: 100vw;
@@ -33,7 +32,6 @@
       position: relative;
       overflow: hidden;
     }
-
     #flipbook-wrapper {
       display: flex;
       justify-content: center;
@@ -41,12 +39,10 @@
       width: 100%;
       height: 100%;
     }
-
     .page-sheet {
       background-color: #ffffff;
       box-shadow: 0 0 20px rgba(0,0,0,0.4);
     }
-
     .page-sheet img {
       width: 100%;
       height: 100%;
@@ -71,7 +67,7 @@
     <button onclick="flipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
     </button>
-    <span class="text-xs font-semibold tracking-wider select-none px-2" id="page-num">1 / 80</span>
+    <span class="text-xs font-semibold tracking-wider select-none px-2" id="page-num">1 / 81</span>
     <button onclick="flipNext()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-right"></i>
     </button>
@@ -80,7 +76,7 @@
   <script>
     let pageFlip;
 
-    const TOTAL_PAGES = 80;
+    const TOTAL_PAGES = 81;
     const PRELOAD_BUFFER = 4; // Mengunduh 4 halaman ke depan secara bertahap
     const BLANK_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 766'%3E%3C/svg%3E";
 
@@ -101,7 +97,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       const flipbookContainer = document.getElementById('flipbook');
 
-      // 1. GENERATE DINAMIS ELEMEN 80 HALAMAN
+      // 1. GENERATE DINAMIS ELEMEN 81 HALAMAN
       for (let i = 1; i <= TOTAL_PAGES; i++) {
         const pageSheet = document.createElement('div');
         pageSheet.className = 'page-sheet';
