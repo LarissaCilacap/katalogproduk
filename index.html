@@ -54,8 +54,8 @@
 </head>
 <body class="relative flex flex-col justify-between select-none">
 
-  <!-- AUDIO ELEMENT BACKGROUND MUSIC -->
-  <audio id="bg-music" loop preload="auto">
+  <!-- AUDIO ELEMENT BACKGROUND MUSIC (ATRIBUT LOOP DIHAPUS) -->
+  <audio id="bg-music" preload="auto">
     <source src="musik/background.mp3" type="audio/mpeg">
   </audio>
 
@@ -63,7 +63,7 @@
   <div class="fixed top-5 right-5 bg-slate-900/90 backdrop-blur-md px-4 py-2.5 rounded-full flex items-center justify-center text-white text-lg z-50 shadow-2xl border border-white/10">
     <button onclick="toggleMusic()" class="hover:text-[#009D7B] active:scale-90 transition flex items-center gap-2 cursor-pointer">
       <i id="music-icon" class="fas fa-volume-xmark text-slate-400"></i>
-      <span id="music-text" class="text-xs font-semibold pr-1">Musik: Off</span>
+      <span id="music-text" class="text-xs font-semibold pr-1">Musik: OFF</span>
     </button>
   </div>
 
@@ -75,7 +75,7 @@
   </div>
 
   <!-- FLOATING NAVBAR BOTTOM (NAVIGASI) -->
-  <div class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-full flex items-center gap-5 text-white text-lg z-50 shadow-2xl border border-white/10">
+  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md px-4 py-2.5 rounded-full flex items-center gap-4 text-white text-lg z-50 shadow-2xl border border-white/10">
     <button onclick="flipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
     </button>
@@ -97,36 +97,43 @@
     const musicIcon = document.getElementById('music-icon');
     const musicText = document.getElementById('music-text');
     let isMusicPlaying = false;
-    let hasPlayedFirstTime = false; // Flag penanda agar pemutaran otomatis hanya jalan 1x
+    let hasPlayedFirstTime = false;
+
+    // EVENT SAAT MUSIK HABIS DIPUTAR (BERHENTI OTOMATIS DAN RESET TOMBOL)
+    bgMusic.addEventListener('ended', function() {
+      isMusicPlaying = false;
+      musicIcon.className = "fas fa-volume-xmark text-slate-400";
+      musicText.innerText = "Musik: OFF";
+    });
 
     // FUNGSI MEMUTAR MUSIK PERTAMA KALI SAAT INTERAKSI TOMBOL
     function playMusicOnFirstClick() {
       if (!hasPlayedFirstTime && !isMusicPlaying) {
-        hasPlayedFirstTime = true; // Langsung kunci agar tidak bisa dipanggil lagi
+        hasPlayedFirstTime = true; // Langsung kunci agar tidak dipanggil lagi
         bgMusic.play().then(() => {
           musicIcon.className = "fas fa-volume-high text-[#009D7B] animate-pulse";
-          musicText.innerText = "Musik: On";
+          musicText.innerText = "Musik: ON";
           isMusicPlaying = true;
         }).catch(err => {
           console.log("Gagal memutar musik:", err);
-          hasPlayedFirstTime = false; // Reset jika gagal (misal file belum siap)
+          hasPlayedFirstTime = false;
         });
       }
     }
 
     // FUNGSI TOGGLE PLAY / PAUSE MANUAL LEWAT TOMBOL TOP-RIGHT
     function toggleMusic() {
-      hasPlayedFirstTime = true; // Jika pengguna klik tombol musik duluan, kunci pemicu otomatis
+      hasPlayedFirstTime = true;
 
       if (isMusicPlaying) {
         bgMusic.pause();
         musicIcon.className = "fas fa-volume-xmark text-slate-400";
-        musicText.innerText = "Musik: Off";
+        musicText.innerText = "Musik: OFF";
         isMusicPlaying = false;
       } else {
         bgMusic.play().then(() => {
           musicIcon.className = "fas fa-volume-high text-[#009D7B] animate-pulse";
-          musicText.innerText = "Musik: On";
+          musicText.innerText = "Musik: ON";
           isMusicPlaying = true;
         }).catch(err => {
           console.log("Gagal memutar musik:", err);
@@ -197,12 +204,12 @@
 
     // 2. FUNGSI NAVIGASI PEMBALIK HALAMAN VIA TOMBOL GUI
     function flipPrev() {
-      playMusicOnFirstClick(); // Pemicu musik sentuhan pertama (jika tekan tombol Prev duluan)
+      playMusicOnFirstClick();
       if (pageFlip) pageFlip.flipPrev();
     }
 
     function flipNext() {
-      playMusicOnFirstClick(); // Pemicu musik sentuhan pertama (khusus tekan tombol Next)
+      playMusicOnFirstClick();
       if (pageFlip) pageFlip.flipNext();
     }
   </script>
