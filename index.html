@@ -22,7 +22,6 @@
       font-family: sans-serif;
       touch-action: manipulation;
     }
-    /* KONTANER UTAMA DENGAN POSISI CENTER PRESISI */
     .viewport-container {
       width: 100vw;
       height: 100vh;
@@ -55,14 +54,28 @@
 </head>
 <body class="relative flex flex-col justify-between select-none">
 
-  <!-- AREA UTAMA DISPLAY KATALOG -->
+  <!-- AUDIO ELEMENT BACKGROUND MUSIC -->
+  <audio id="bg-music" loop preload="auto">
+    <!-- Sesuaikan lokasi & nama file audio Anda -->
+    <source src="musik/background.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- FLOATING NAVBAR TOP-RIGHT (KONTROL MUSIK MANUAL) -->
+  <div class="fixed top-5 right-5 bg-slate-900/90 backdrop-blur-md px-4 py-2.5 rounded-full flex items-center justify-center text-white text-lg z-50 shadow-2xl border border-white/10">
+    <button onclick="toggleMusic()" class="hover:text-[#009D7B] active:scale-90 transition flex items-center gap-2 cursor-pointer">
+      <i id="music-icon" class="fas fa-volume-xmark text-slate-400"></i>
+      <span id="music-text" class="text-xs font-semibold pr-1">Musik: Off</span>
+    </button>
+  </div>
+
+  <!-- AREA UTAMA DISPLAY KATALOG PRODUK -->
   <div class="viewport-container">
     <div id="flipbook-wrapper">
       <div id="flipbook"></div>
     </div>
   </div>
 
-  <!-- FLOATING NAVBAR BOTTOM (NAVIGASI EKSKLUSIF BUKU) -->
+  <!-- FLOATING NAVBAR BOTTOM (NAVIGASI) -->
   <div class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-full flex items-center gap-5 text-white text-lg z-50 shadow-2xl border border-white/10">
     <button onclick="flipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
@@ -80,7 +93,49 @@
     const PRELOAD_BUFFER = 4; // Mengunduh 4 halaman ke depan secara bertahap
     const BLANK_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 766'%3E%3C/svg%3E";
 
-    // FUNGSI OPTIMASI LAZY LOADING GAMBAR
+    // KONTROL MUSIK LATAR
+    const bgMusic = document.getElementById('bg-music');
+    const musicIcon = document.getElementById('music-icon');
+    const musicText = document.getElementById('music-text');
+    let isMusicPlaying = false;
+
+    // Fungsi Toggle Play / Pause Musik Manual
+    function toggleMusic() {
+      if (isMusicPlaying) {
+        bgMusic.pause();
+        musicIcon.className = "fas fa-volume-xmark text-slate-400";
+        musicText.innerText = "Musik: Off";
+        isMusicPlaying = false;
+      } else {
+        bgMusic.play().then(() => {
+          musicIcon.className = "fas fa-volume-high text-[#009D7B] animate-pulse";
+          musicText.innerText = "Musik: On";
+          isMusicPlaying = true;
+        }).catch(err => {
+          console.log("Autoplay diblokir oleh browser. Pengguna harus mengklik tombol secara langsung.", err);
+        });
+      }
+    }
+
+    // Fungsi Otomatis Memutar Musik pada Sentuhan Pertama Pengguna
+    function setupAutoplayOnFirstTouch() {
+      const startAudio = () => {
+        if (!isMusicPlaying) {
+          bgMusic.play().then(() => {
+            musicIcon.className = "fas fa-volume-high text-[#009D7B] animate-pulse";
+            musicText.innerText = "Musik: On";
+            isMusicPlaying = true;
+          }).catch(() => {});
+        }
+        window.removeEventListener('click', startAudio);
+        window.removeEventListener('touchstart', startAudio);
+      };
+
+      window.addEventListener('click', startAudio, { once: true });
+      window.addEventListener('touchstart', startAudio, { once: true });
+    }
+
+    // 1. FUNGSI OPTIMASI LAZY LOADING GAMBAR
     function loadAheadImages(currentPageIndex) {
       const startIdx = currentPageIndex;
       const endIdx = Math.min(currentPageIndex + PRELOAD_BUFFER, TOTAL_PAGES - 1);
@@ -89,7 +144,7 @@
         const img = document.getElementById(`img-page-${i + 1}`);
         if (img && img.getAttribute('data-src')) {
           img.src = img.getAttribute('data-src');
-          img.removeAttribute('data-src'); // Tandai bahwa gambar telah dimuat
+          img.removeAttribute('data-src');
         }
       }
     }
@@ -97,7 +152,10 @@
     document.addEventListener('DOMContentLoaded', function() {
       const flipbookContainer = document.getElementById('flipbook');
 
-      // 1. GENERATE DINAMIS ELEMEN 81 HALAMAN
+      // Siapkan pemicu autoplay sentuhan pertama
+      setupAutoplayOnFirstTouch();
+
+      // A. GENERATE DINAMIS ELEMEN 81 HALAMAN
       for (let i = 1; i <= TOTAL_PAGES; i++) {
         const pageSheet = document.createElement('div');
         pageSheet.className = 'page-sheet';
@@ -112,10 +170,9 @@
         flipbookContainer.appendChild(pageSheet);
       }
 
-      // Preload 4 halaman pertama saat aplikasi dibuka
-      loadAheadImages(0);
+      loadAheadImages(0); // Preload 4 halaman pertama saat aplikasi dibuka
 
-      // 2. INISIALISASI ST.PAGEFLIP (MATIKAN SWIPE & KLIK HALAMAN MANUAL)
+      // B. INISIALISASI ST.PAGEFLIP (MATIKAN SWIPE & KLIK HALAMAN MANUAL)
       pageFlip = new St.PageFlip(flipbookContainer, {
         width: 540,
         height: 766,
@@ -133,18 +190,17 @@
 
       pageFlip.loadFromHTML(document.querySelectorAll('.page-sheet'));
 
-      // EVENT LISTENER EVENT BALIK HALAMAN
+      // C. EVENT LISTENER EVENT BALIK HALAMAN
       pageFlip.on('flip', (e) => {
         const total = pageFlip.getPageCount();
         const currentIdx = e.data;
         document.getElementById('page-num').innerText = `${currentIdx + 1} / ${total}`;
-        
-        // Panggil pengunduhan halaman selanjutnya
-        loadAheadImages(currentIdx);
+
+        loadAheadImages(currentIdx); // Panggil pengunduhan halaman selanjutnya
       });
     });
 
-    // FUNGSI NAVIGASI PEMBALIK HALAMAN VIA TOMBOL GUI
+    // 2. FUNGSI NAVIGASI PEMBALIK HALAMAN VIA TOMBOL GUI
     function flipPrev() {
       if (pageFlip) pageFlip.flipPrev();
     }
