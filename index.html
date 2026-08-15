@@ -69,7 +69,7 @@
   </div>
 
   <!-- FLOATING NAVBAR TOP-RIGHT (KONTROL MUSIK MANUAL) -->
-  <div class="fixed top-5 right-5 bg-[#F9F8FE] backdrop-blur-md px-4 py-2.5 rounded-full flex items-center justify-center text-[#81929F] text-lg z-50 shadow-sm border border-[#81929F]">
+  <div class="fixed top-5 right-5 bg-[#F9F8FE] backdrop-blur-md px-4 py-2.5 rounded-full flex items-center justify-center text-[#81929F] text-lg z-50 border border-[#81929F]">
     <button onclick="toggleMusic()" class="hover:text-[#009D7B] active:scale-90 transition flex items-center gap-2 cursor-pointer">
       <i id="music-icon" class="fas fa-volume-xmark text-[#81929F]"></i>
       <span id="music-text" class="text-xs font-semibold pr-1">Musik: OFF</span>
@@ -84,12 +84,12 @@
   </div>
 
   <!-- FLOATING NAVBAR BOTTOM (NAVIGASI) -->
-  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-[#F9F8FE] backdrop-blur-md px-4 py-2.5 rounded-full flex items-center gap-4 text-[#81929F] text-lg z-50 shadow-sm border border-[#81929F]">
-    <button onclick="flipPrev()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
+  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-4 text-[#81929F] text-lg z-50">
+    <button onclick="flipPrev()" class="bg-[#F9F8FE] backdrop-blur-md px-4 py-2.5 rounded-full border border-[#81929F] hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-left"></i>
     </button>
     <span class="text-xs font-semibold tracking-wider select-none px-2" id="page-num">1 / 81</span>
-    <button onclick="flipNext()" class="hover:text-[#009D7B] active:scale-90 transition p-1">
+    <button onclick="flipNext()" class="bg-[#F9F8FE] backdrop-blur-md px-4 py-2.5 rounded-full border border-[#81929F] hover:text-[#009D7B] active:scale-90 transition p-1">
       <i class="fas fa-chevron-right"></i>
     </button>
   </div>
